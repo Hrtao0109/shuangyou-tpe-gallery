@@ -20,7 +20,7 @@ body{font-family:-apple-system,"PingFang SC","Heiti SC",sans-serif;background:#f
 .search{padding:8px 16px;background:#fff;border-bottom:1px solid #eee}
 .search input{width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:20px;font-size:14px;outline:none}
 .list{padding:8px 0}
-.item{padding:12px 16px;border-bottom:1px solid #eee;cursor:pointer;font-size:14px;line-height:1.6;transition:background .15s;-webkit-tap-highlight-color:transparent}
+.item{padding:14px 16px;border-bottom:1px solid #eee;cursor:pointer;font-size:14px;line-height:1.7;transition:background .15s;-webkit-tap-highlight-color:transparent;white-space:pre-wrap}
 .item:active{background:#f0f0f0}
 .item.used{color:#d32f2f!important}
 .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:100}
@@ -73,11 +73,9 @@ body{font-family:-apple-system,"PingFang SC","Heiti SC",sans-serif;background:#f
 <script>
 const SB = supabase.createClient('https://pqdpwxlgelfiafwejonz.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxZHB3eGxnZWxmaWFmd2Vqb256Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzgwMDgsImV4cCI6MjA5NzQ1NDAwOH0.I7DKGNoi9GKNHj9ej-v5dH7G0MFPQPNwzlmWgdSF1jw');
 const PHASH = '873c97181831f19f697763f99c92710d63ad55825d793c64880ac60e2fdb8edd';
-
 let items=[], usedIds=new Set(), tab='posts', filter='all', search='';
 
 async function load(){document.getElementById('list').innerHTML='<div class="loading">加载中...</div>';const t=tab;const{data:d}=await SB.from(t).select('id,content').order('id');items=d||[];const{data:u}=await SB.from('used_items').select('item_id').eq('item_type',t);usedIds=new Set((u||[]).map(r=>r.item_id));render();updateStats()}
-
 function updateStats(){const t=items.length,u=usedIds.size;document.getElementById('stats').textContent=(tab==='posts'?'种草文案':'评论话术')+' · '+t+' 条 · '+u+' 条已用'}
 
 async function copyItem(item,el){try{await navigator.clipboard.writeText(item.content)}catch(e){const ta=document.createElement('textarea');ta.value=item.content;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta)}if(!usedIds.has(item.id)){usedIds.add(item.id);el.classList.add('used');updateStats();SB.from('used_items').insert({item_type:tab,item_id:item.id}).then(()=>{})}const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1200)}
@@ -86,18 +84,14 @@ function render(){const list=document.getElementById('list');list.innerHTML='';l
 
 function showReset(){document.getElementById('modal').classList.add('show');document.getElementById('pwd').value='';document.getElementById('err').style.display='none';setTimeout(()=>document.getElementById('pwd').focus(),200)}
 function hideReset(){document.getElementById('modal').classList.remove('show')}
-
 async function sha256(m){const e=new TextEncoder();const d=await crypto.subtle.digest('SHA-256',e.encode(m));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('')}
 async function doReset(){const pwd=document.getElementById('pwd').value;if(await sha256(pwd)!==PHASH){document.getElementById('err').style.display='block';return}const{error}=await SB.from('used_items').delete().eq('item_type',tab).neq('id',0);if(!error){usedIds.clear();hideReset();render();updateStats()}else{alert('重置失败: '+error.message)}}
 
 document.querySelectorAll('.tab').forEach(el=>{el.addEventListener('click',function(){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));this.classList.add('on');tab=this.dataset.tab;filter='all';search='';document.getElementById('si').value='';document.querySelectorAll('#filters button').forEach(b=>b.classList.remove('on'));document.querySelector('#filters button[data-f="all"]').classList.add('on');load()})});
-
 document.querySelectorAll('#filters button').forEach(btn=>{btn.addEventListener('click',function(){document.querySelectorAll('#filters button').forEach(b=>b.classList.remove('on'));this.classList.add('on');filter=this.dataset.f;render()})});
-
 document.getElementById('si').addEventListener('input',function(){search=this.value;render()});
 document.getElementById('pwd').addEventListener('keydown',function(e){if(e.key==='Enter')doReset()});
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)hideReset()});
-
 load();
 </script>
 </body>
