@@ -34,6 +34,11 @@ body{font-family:-apple-system,"PingFang SC","Heiti SC",sans-serif;background:#f
 .modal-box .btn-cancel{background:#eee;color:#555}
 .modal-box .err{color:#d32f2f;font-size:13px;margin-top:4px;display:none}
 .float-btn{position:fixed;bottom:20px;right:20px;background:#d32f2f;color:#fff;border:none;padding:10px 18px;border-radius:20px;font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:50}
+.copy-modal-box{background:#fff;border-radius:12px;padding:20px;width:90%;max-width:340px;text-align:center;max-height:80vh;display:flex;flex-direction:column}
+.copy-modal-box h3{font-size:15px;margin-bottom:6px;color:#333}
+.copy-preview{background:#f8f8f8;border:1px solid #e0e0e0;border-radius:8px;padding:14px;margin:10px 0;text-align:left;font-size:13px;line-height:1.7;max-height:300px;overflow-y:auto;white-space:pre-wrap;color:#444}
+.copy-modal-box .btn-row{display:flex;gap:10px;margin-top:4px}
+.copy-modal-box .btn-row button{flex:1;padding:10px;border:none;border-radius:8px;font-size:15px;cursor:pointer}
 .loading{text-align:center;padding:40px;color:#999;font-size:14px}
 </style>
 </head>
@@ -70,17 +75,31 @@ body{font-family:-apple-system,"PingFang SC","Heiti SC",sans-serif;background:#f
   </div>
 </div>
 
+<div class="modal" id="copyModal">
+  <div class="copy-modal-box">
+    <h3>确认复制</h3>
+    <div class="copy-preview" id="copyPreview"></div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="hideCopyConfirm()">取消</button>
+      <button class="btn-confirm" onclick="confirmCopy()">确认复制</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SB = supabase.createClient('https://pqdpwxlgelfiafwejonz.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxZHB3eGxnZWxmaWFmd2Vqb256Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzgwMDgsImV4cCI6MjA5NzQ1NDAwOH0.I7DKGNoi9GKNHj9ej-v5dH7G0MFPQPNwzlmWgdSF1jw');
 const PHASH = '873c97181831f19f697763f99c92710d63ad55825d793c64880ac60e2fdb8edd';
-let items=[], usedIds=new Set(), tab='posts', filter='all', search='';
+let items=[], usedIds=new Set(), tab='posts', filter='all', search='', pendingItem=null, pendingEl=null;
 
 async function load(){document.getElementById('list').innerHTML='<div class="loading">加载中...</div>';const t=tab;const{data:d}=await SB.from(t).select('id,content').order('id');items=d||[];const{data:u}=await SB.from('used_items').select('item_id').eq('item_type',t);usedIds=new Set((u||[]).map(r=>r.item_id));render();updateStats()}
 function updateStats(){const t=items.length,u=usedIds.size;document.getElementById('stats').textContent=(tab==='posts'?'种草文案':'评论话术')+' · '+t+' 条 · '+u+' 条已用'}
 
+function showCopyConfirm(item,el){pendingItem=item;pendingEl=el;document.getElementById('copyPreview').textContent=item.content;document.getElementById('copyModal').classList.add('show')}
+function hideCopyConfirm(){pendingItem=null;pendingEl=null;document.getElementById('copyModal').classList.remove('show')}
+async function confirmCopy(){if(!pendingItem||!pendingEl)return;const item=pendingItem,el=pendingEl;hideCopyConfirm();try{await navigator.clipboard.writeText(item.content)}catch(e){const ta=document.createElement('textarea');ta.value=item.content;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta)}if(!usedIds.has(item.id)){usedIds.add(item.id);el.classList.add('used');updateStats();SB.from('used_items').insert({item_type:tab,item_id:item.id}).then(()=>{})}const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1200)}
 async function copyItem(item,el){try{await navigator.clipboard.writeText(item.content)}catch(e){const ta=document.createElement('textarea');ta.value=item.content;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta)}if(!usedIds.has(item.id)){usedIds.add(item.id);el.classList.add('used');updateStats();SB.from('used_items').insert({item_type:tab,item_id:item.id}).then(()=>{})}const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1200)}
 
-function render(){const list=document.getElementById('list');list.innerHTML='';let f=items;if(filter==='unused')f=f.filter(i=>!usedIds.has(i.id));else if(filter==='used')f=f.filter(i=>usedIds.has(i.id));else if(filter!=='all')f=f.filter(i=>i.content.includes(filter));if(search){const s=search.toLowerCase();f=f.filter(i=>i.content.toLowerCase().includes(s))}f.forEach(i=>{const div=document.createElement('div');div.className='item'+(usedIds.has(i.id)?' used':'');div.textContent=i.content;div.onclick=()=>copyItem(i,div);list.appendChild(div)})}
+function render(){const list=document.getElementById('list');list.innerHTML='';let f=items;if(filter==='unused')f=f.filter(i=>!usedIds.has(i.id));else if(filter==='used')f=f.filter(i=>usedIds.has(i.id));else if(filter!=='all')f=f.filter(i=>i.content.includes(filter));if(search){const s=search.toLowerCase();f=f.filter(i=>i.content.toLowerCase().includes(s))}f.forEach(i=>{const div=document.createElement('div');div.className='item'+(usedIds.has(i.id)?' used':'');div.textContent=i.content;div.onclick=()=>showCopyConfirm(i,div);list.appendChild(div)})}
 
 function showReset(){document.getElementById('modal').classList.add('show');document.getElementById('pwd').value='';document.getElementById('err').style.display='none';setTimeout(()=>document.getElementById('pwd').focus(),200)}
 function hideReset(){document.getElementById('modal').classList.remove('show')}
@@ -92,6 +111,7 @@ document.querySelectorAll('#filters button').forEach(btn=>{btn.addEventListener(
 document.getElementById('si').addEventListener('input',function(){search=this.value;render()});
 document.getElementById('pwd').addEventListener('keydown',function(e){if(e.key==='Enter')doReset()});
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)hideReset()});
+document.getElementById('copyModal').addEventListener('click',function(e){if(e.target===this)hideCopyConfirm()});
 load();
 </script>
 </body>
